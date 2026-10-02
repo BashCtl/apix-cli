@@ -72,12 +72,3 @@ class ApiClient:
 
     def __exit__(self, exc_type, exc, tb):
         self.close()
-
-    def parse_body(self, response: httpx.Response) -> Any | None:
-        if not response.content:
-            return None
-
-        try:
-            return response.json()
-        except ValueError:
-            return response.text
