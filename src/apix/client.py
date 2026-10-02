@@ -1,4 +1,3 @@
-
 from enum import StrEnum, auto
 
 import httpx
@@ -22,8 +21,8 @@ class RequestType(StrEnum):
 
 
 class ApiClient:
-    def __init__(self):
-        self.client = httpx.Client()
+    def __init__(self, client: httpx.Client | None = None):
+        self.client: httpx.Client = client or httpx.Client()
 
     def request(
         self,
