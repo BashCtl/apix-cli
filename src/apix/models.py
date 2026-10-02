@@ -6,19 +6,27 @@ import httpx
 
 @dataclass
 class ApiResponse:
+    method: str
+    url: str
     status_code: int
     headers: dict[str, str]
-    body: Any
+    body: Any | None
     elapsed_ms: float
     size_bytes: int = 0
 
     @classmethod
     def from_httpx(cls, response: httpx.Response) -> "ApiResponse":
-        try:
-            body = response.json()
-        except ValueError:  # empty body or not JSON
-            body = response.text
+        if not response.content:
+            body = None
+        else:
+            try:
+                body = response.json()
+            except ValueError:
+                body = response.text
+
         return cls(
+            method=response.request.method,
+            url=str(response.url),
             status_code=response.status_code,
             headers=dict(response.headers),
             body=body,
