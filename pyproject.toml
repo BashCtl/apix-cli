@@ -23,3 +23,9 @@ where = ["src"]
 dev = [
     "pytest>=9.1.1",
 ]
+
+[tool.ruff.lint]
+select = ["E4", "E7", "E9", "F", "B"]
+
+[tool.ruff.lint.flake8-bugbear]
+extend-immutable-calls = ["typer.Option", "typer.Argument"]

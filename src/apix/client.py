@@ -1,3 +1,4 @@
+
 from enum import StrEnum, auto
 
 import httpx
@@ -13,11 +14,11 @@ from apix.models import ApiResponse
 
 
 class RequestType(StrEnum):
-    GET = auto()
-    POST = auto()
-    PUT = auto()
-    PATCH = auto()
-    DELETE = auto()
+    GET = "GET"
+    POST = "POST"
+    PUT = "PUT"
+    PATCH = "PATCH"
+    DELETE = "DELETE"
 
 
 class ApiClient:
@@ -29,8 +30,9 @@ class ApiClient:
         method: str,
         url: str,
         *,
-        headers: dict[str, str] | None = None,
-        json: dict | None = None,
+        header: list[str] | None = None,
+        json: str | None = None,
+        json_file: str | None = None,
         timeout: float = 10.0,
     ) -> ApiResponse:
         method = method.upper()
@@ -40,6 +42,14 @@ class ApiClient:
             raise UnsupportedHttpMethodError(
                 f"Unsupported HTTP method: {method}"
             ) from None
+
+        headers = {}
+        for h in header or []:
+            key, _, value = h.partition(":")
+            headers[key.strip()] = value.strip()
+
+        if json or json_file:
+            headers.setdefault("Content-Type", "application/json")
 
         try:
             response: httpx.Response = self.client.request(

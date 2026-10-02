@@ -1,31 +1,46 @@
 import typer
 
+from apix.client import ApiClient
+from apix.errors import ApiError
+from apix.formatter import Formatter
+
 app = typer.Typer()
 
 
 @app.command()
-def get():
-    pass
-
-
-@app.command()
-def post():
-    pass
-
-
-@app.command()
-def put():
-    pass
-
-
-@app.command()
-def patch():
-    pass
-
-
-@app.command()
-def delete():
-    pass
+def command(
+    method: str,
+    url: str,
+    header: list[str] = typer.Option(
+        [], "--header", "-H", help="Specify request headers"
+    ),
+    json: str | None = typer.Option(
+        None, "--json", help="Specify request json string payload"
+    ),
+    json_file: str = typer.Option(
+        None, "--json-file", help="Path to json file payload"
+    ),
+    timeout: int = typer.Option(
+        10,
+        "--timeout",
+        help="Seconds before the request is abandoned (default 10)",
+    ),
+    verbose: bool = typer.Option(False, "--verbose", help="Print response headers"),
+):
+    formatter = Formatter()
+    try:
+        with ApiClient() as client:
+            response = client.request(
+                method=method,
+                url=url,
+                header=header,
+                json=json,
+                json_file=json_file,
+                timeout=timeout,
+            )
+        formatter.print_response(response, verbose)
+    except ApiError as e:
+        formatter.print_error(e)
 
 
 if __name__ == "__main__":

@@ -8,7 +8,7 @@ from apix.models import ApiResponse
 
 
 class Formatter:
-    def __inti__(self):
+    def __init__(self):
         self.console = Console()
         self.err_console = Console(stderr=True)
 
@@ -19,7 +19,7 @@ class Formatter:
         headers = response.headers
         body = response.body
         elapsed_ms = response.elapsed_ms
-        size_bytes = response
+        size_bytes = response.size_bytes
 
         try:
             reason = HTTPStatus(status_code).phrase
@@ -28,12 +28,14 @@ class Formatter:
 
         style = self.status_style(status_code)
 
-        self.console.print(f"[bold]{method}[/bold] {escape(url)}")
+        self.console.print(f"\n[bold]{method}[/bold] {escape(url)}\n")
         if verbose:
-            self.console.print(f"Headers:\n {headers}")
+            self.console.print("[green][bold]Headers:[/bold][/green]")
+            self.console.print(self.format_headers(headers))
+
         self.console.print(f"Status: [{style}]{status_code} {reason}[/{style}]")
         self.console.print(f"Time: {elapsed_ms:.0f} ms")
-        self.console.print(f"Size: {size_bytes} bytes")
+        self.console.print(f"Size: {size_bytes} bytes\n")
         self.console.print("Response:")
 
         if isinstance(body, dict):
@@ -50,3 +52,9 @@ class Formatter:
         if code < 400:
             return "yellow"
         return "red"
+
+    def format_headers(self, headers):
+        lines = []
+        for name, value in headers.items():
+            lines.append(f" '{name}': '{value}'")
+        return "\n".join(lines) + "\n"
