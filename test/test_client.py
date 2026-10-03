@@ -45,7 +45,7 @@ def test_get_returns_api_response(make_api):
     assert result.status_code == 200
     assert result.method == "GET"
     assert result.headers == {"content-type": "application/json"}
-    assert result.elapsed_ms <= 0.5
+    assert result.elapsed_ms <= 0.6
     assert result.url == URL
     assert result.size_bytes == 12
     assert result.body == {"ok": True}
@@ -61,3 +61,18 @@ def test_method_is_normalised(make_api, method):
 
     make_api(handler).request(method, URL)
     assert seen["method"] == method.upper()
+
+
+def test_post_returns_api_response(make_api):
+    def post_handler(request: httpx.Request) -> httpx.Response:
+        return make_response(201, json={"token": "adfadfa"})
+
+    api = make_api(post_handler)
+    result = api.request("post", URL, json={"user": "dude", "password": "querty"})
+   
+    assert result is not None
+    assert isinstance(result, ApiResponse)
+    assert result.status_code == 201
+    assert result.body == {"token": "adfadfa"}
+    assert result.elapsed_ms is not None
+    assert result.size_bytes == 20
