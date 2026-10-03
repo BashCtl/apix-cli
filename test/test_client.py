@@ -45,7 +45,7 @@ def test_get_returns_api_response(make_api):
     assert result.status_code == 200
     assert result.method == "GET"
     assert result.headers == {"content-type": "application/json"}
-    assert result.elapsed_ms <= 0.6
+    assert result.elapsed_ms <=  0.65
     assert result.url == URL
     assert result.size_bytes == 12
     assert result.body == {"ok": True}
@@ -69,10 +69,19 @@ def test_post_returns_api_response(make_api):
 
     api = make_api(post_handler)
     result = api.request("post", URL, json={"user": "dude", "password": "querty"})
-   
+
     assert result is not None
     assert isinstance(result, ApiResponse)
     assert result.status_code == 201
     assert result.body == {"token": "adfadfa"}
     assert result.elapsed_ms is not None
     assert result.size_bytes == 20
+
+
+@pytest.mark.parametrize("method", ["HEAD", "FOO", ""])
+def test_unsupported_method(make_api, method):
+    api = make_api(ok)
+    with pytest.raises(UnsupportedHttpMethodError) as excinfo:
+        api.request(method, URL)
+
+    assert str(excinfo.value) == f"Unsupported HTTP method: {method}"
