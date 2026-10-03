@@ -1,6 +1,3 @@
-# tests/test_client.py
-import json
-
 import httpx
 import pytest
 from apix.models import ApiResponse
@@ -45,7 +42,7 @@ def test_get_returns_api_response(make_api):
     assert result.status_code == 200
     assert result.method == "GET"
     assert result.headers == {"content-type": "application/json"}
-    assert result.elapsed_ms <=  0.65
+    assert result.elapsed_ms <= 0.65
     assert result.url == URL
     assert result.size_bytes == 12
     assert result.body == {"ok": True}
@@ -85,3 +82,25 @@ def test_unsupported_method(make_api, method):
         api.request(method, URL)
 
     assert str(excinfo.value) == f"Unsupported HTTP method: {method}"
+
+@pytest.mark.parametrize(
+    ("raised", "expected"),
+    [
+        (httpx.ReadTimeout("t"), RequestTimeoutError),
+        (httpx.ConnectTimeout("t"), RequestTimeoutError),
+        (httpx.ConnectError("c"), ConnectionFailedError),
+        (httpx.UnsupportedProtocol("p"), InvalidUrlError),
+        (httpx.InvalidURL("u"), InvalidUrlError),
+        (httpx.ReadError("r"), ApiError),
+        (httpx.RemoteProtocolError("r"), ApiError),
+    ],
+)
+def test_exception_mapping(make_api, raised, expected):
+    def handler(request):
+        raise raised
+
+    api = make_api(handler)
+    with pytest.raises(expected) as exc_info:
+        api.request("GET", URL)
+
+    assert exc_info.value.__cause__ is raised 
