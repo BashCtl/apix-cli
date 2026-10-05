@@ -27,9 +27,15 @@ def command(
         help="Seconds before the request is abandoned (default 10)",
     ),
     verbose: bool = typer.Option(False, "--verbose", help="Print response headers"),
-    excpected_status: int = typer.Option(
+    excpected_status: int | None = typer.Option(
         None, "--excpect-status", help="Expected HTTP response code"
     ),
+    expected_header: str | None = typer.Option(
+        None, "--expect-header", help="Expected response header"
+    ),
+    max_time:int|None = typer.Option(
+        None, "--max-time", help="Elapsed time is below specified value"
+    )
 ):
     formatter = Formatter()
     try:
@@ -43,7 +49,9 @@ def command(
                 timeout=timeout,
             )
         assertions_result = check_all_assetion(
-            response=response, expected_status=excpected_status
+            response=response,
+            expected_status=excpected_status,
+            expected_header=expected_header,
         )
         formatter.print_response(response, verbose)
     except ApiError as e:
