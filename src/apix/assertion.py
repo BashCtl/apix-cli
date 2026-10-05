@@ -30,7 +30,7 @@ class StatusAssertion:
             passed=passed,
             expected=self.expected,
             actual=response.status_code,
-            message=f"status == {self.expected}",
+            message=f"Expected status: {self.expected}, got {response.status_code}",
         )
 
 

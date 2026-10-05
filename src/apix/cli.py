@@ -54,11 +54,12 @@ def command(
         assertions_result = check_all_assetion(
             response=response,
             expected_status=excpected_status,
-            expected_header=expected_header,
             max_time=max_time,
+            expected_header=expected_header,
             expected_json=expected_json,
         )
         formatter.print_response(response, verbose)
+        formatter.print_assertions(*assertions_result)
     except ApiError as e:
         formatter.print_error(e)
 

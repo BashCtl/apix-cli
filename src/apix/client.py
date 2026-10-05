@@ -55,7 +55,7 @@ class ApiClient:
             raise ApiError("Use either --json or --json-file, not both.")
 
         if json_file:
-            json = JsonUtil.load_json(json_file)
+            json = JsonUtil.load_json_file(json_file)
 
         try:
             response: httpx.Response = self.client.request(
