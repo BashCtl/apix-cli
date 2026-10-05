@@ -33,9 +33,12 @@ def command(
     expected_header: str | None = typer.Option(
         None, "--expect-header", help="Expected response header"
     ),
-    max_time:int|None = typer.Option(
+    max_time: int | None = typer.Option(
         None, "--max-time", help="Elapsed time is below specified value"
-    )
+    ),
+    expected_json: str | None = typer.Option(
+        None, "--expect-json", help="Response body equals expected JSON"
+    ),
 ):
     formatter = Formatter()
     try:
@@ -52,6 +55,8 @@ def command(
             response=response,
             expected_status=excpected_status,
             expected_header=expected_header,
+            max_time=max_time,
+            expected_json=expected_json,
         )
         formatter.print_response(response, verbose)
     except ApiError as e:

@@ -10,6 +10,7 @@ from apix.errors import (
     UnsupportedHttpMethodError,
 )
 from apix.models import ApiResponse
+from apix.utils import JsonUtil
 
 
 class RequestType(StrEnum):
@@ -49,6 +50,12 @@ class ApiClient:
 
         if json or json_file:
             headers.setdefault("Content-Type", "application/json")
+
+        if json is not None and json_file is not None:
+            raise ApiError("Use either --json or --json-file, not both.")
+
+        if json_file:
+            json = JsonUtil.load_json(json_file)
 
         try:
             response: httpx.Response = self.client.request(
