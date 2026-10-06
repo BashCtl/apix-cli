@@ -5,7 +5,7 @@ from rich.json import JSON
 from rich.markup import escape
 
 from apix.models import ApiResponse
-from apix.assertion import AssertionResult
+from apix.assertions import AssertionResult
 
 
 class Formatter:

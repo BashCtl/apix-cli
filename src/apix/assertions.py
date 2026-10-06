@@ -38,13 +38,46 @@ class HeaderAssertion:
     def __init__(self, expected: str):
         self.expected = expected
 
+        name, sep, value = expected.partition(":")
+        self.name = name.strip().lower()
+
+        if not self.name:
+            raise ApiError(
+                f"Invalid header assertion {expected!r}, use 'Name: value' or 'Name'"
+            )
+
+        self.value = value.strip() if sep else None
+
     def check(self, response: ApiResponse) -> AssertionResult:
+        actual = response.headers.get(self.name)
+
+        if actual is None:
+            return AssertionResult(
+                passed=False,
+                expected=self.expected,
+                actual=None,
+                message=f"Expected header {self.name!r} is missing",
+            )
+
+        passed = self.value is None or self._value_matches(actual)
+
+        if self.value is None:
+            message = f"Header {self.name!r} is present"
+        else:
+            message = f"Expected header {self.name!r}: {self.value!r}, got {actual!r}"
+
         return AssertionResult(
-            passed=response.headers == self.expected,
+            passed=passed,
             expected=self.expected,
-            actual=response.headers,
-            message=f"Expected header: {self.expected}, got {response.headers}",
+            actual=actual,
+            message=message,
         )
+
+    def _value_matches(self, actual: str) -> bool:
+        if self.name == "content-type" and self.value and ";" not in self.value:
+            actual = actual.split(";", 1)[0].strip()
+            return actual.lower() == self.value.lower()
+        return actual == self.value
 
 
 class JsonValueAssertion:
@@ -76,11 +109,11 @@ class ResponseTimeAssertion:
             passed=response.elapsed_ms <= self.expected,
             expected=self.expected,
             actual=response.elapsed_ms,
-            message=f"Expected elapsed time < {self.expected} ms, got {response.elapsed_ms:.2f} ms",
+            message=f"Expected elapsed time <= {self.expected} ms, got {response.elapsed_ms:.2f} ms",
         )
 
 
-def check_all_assetion(response: ApiResponse, **kwargs) -> list[AssertionResult]:
+def check_all_assetions(response: ApiResponse, **kwargs) -> list[AssertionResult]:
     assertions = []
 
     expected_status = kwargs.get("expected_status", None)

@@ -3,7 +3,7 @@ import typer
 from apix.client import ApiClient
 from apix.errors import ApiError
 from apix.formatter import Formatter
-from apix.assertion import check_all_assetion
+from apix.assertions import check_all_assetions
 
 app = typer.Typer()
 
@@ -51,7 +51,7 @@ def command(
                 json_file=json_file,
                 timeout=timeout,
             )
-        assertions_result = check_all_assetion(
+        assertions_result = check_all_assetions(
             response=response,
             expected_status=excpected_status,
             max_time=max_time,
