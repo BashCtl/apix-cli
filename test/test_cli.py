@@ -2,8 +2,8 @@ from unittest.mock import MagicMock
 
 from typer.testing import CliRunner
 
+from apix.assertions import AssertionResult
 from apix.cli import app
-from apix.errors import ApiError
 
 runner = CliRunner()
 
@@ -16,6 +16,13 @@ def make_fake_client(monkeypatch, response=None):
     return fake_client
 
 
+def make_fake_response(**kwargs):
+    response = MagicMock()
+    for name, value in kwargs.items():
+        setattr(response, name, value)
+    return response
+
+
 def test_command_help():
     result = runner.invoke(app, ["command", "--help"])
     assert result.exit_code == 0
@@ -26,6 +33,10 @@ def test_command_help():
     assert "--json-file" in result.stdout
     assert "--timeout" in result.stdout
     assert "--verbose" in result.stdout
+    assert "--expect-status" in result.stdout
+    assert "--expect-header" in result.stdout
+    assert "--expect-json" in result.stdout
+    assert "--max-time" in result.stdout
 
 
 def test_missing_argument():
@@ -88,12 +99,336 @@ def test_verbose_and_timeout(monkeypatch):
 
     fake_formatter.print_response.assert_called_once_with("Fake Response Verbose", True)
 
-def test_api_error_is_printed(monkeypatch):
-    fake_client = make_fake_client(monkeypatch)
-    err = ApiError("Error Here")          
-    fake_client.request.side_effect = err
+
+def test_expect_status(monkeypatch):
+
+    fake_response = make_fake_response(status_code=200)
+
+    make_fake_client(monkeypatch, response=fake_response)
     fake_formatter = MagicMock()
     monkeypatch.setattr("apix.cli.Formatter", lambda: fake_formatter)
 
-    runner.invoke(app, ["GET", "https://x.com"])
-    fake_formatter.print_error.assert_called_once_with(err)
+    result = runner.invoke(
+        app,
+        [
+            "GET",
+            "https://x.com",
+            "--expect-status",
+            "200",
+        ],
+    )
+
+    assert result.exit_code == 0, result.output
+
+
+def test_expect_status_fails(monkeypatch):
+
+    fake_response = make_fake_response(status_code=404)
+
+    make_fake_client(monkeypatch, response=fake_response)
+    fake_formatter = MagicMock()
+    monkeypatch.setattr("apix.cli.Formatter", lambda: fake_formatter)
+
+    result = runner.invoke(
+        app,
+        [
+            "GET",
+            "https://x.com",
+            "--expect-status",
+            "200",
+        ],
+    )
+
+    assert result.exit_code == 0, result.output
+    fake_formatter.print_assertions.assert_called_once_with(
+        AssertionResult(
+            passed=False,
+            expected=200,
+            actual=404,
+            message="Expected status: 200, got 404",
+        )
+    )
+
+
+def test_expect_header(monkeypatch):
+    fake_response = make_fake_response(headers={"content-type": "application/json"})
+
+    make_fake_client(monkeypatch, response=fake_response)
+
+    fake_formatter = MagicMock()
+    monkeypatch.setattr("apix.cli.Formatter", lambda: fake_formatter)
+
+    result = runner.invoke(
+        app,
+        [
+            "GET",
+            "https://x.com",
+            "--expect-header",
+            "Content-Type: application/json",
+        ],
+    )
+
+    assert result.exit_code == 0, result.output
+
+    fake_formatter.print_assertions.assert_called_once()
+
+    assertion = fake_formatter.print_assertions.call_args.args[0]
+
+    assert assertion.passed is True
+    assert assertion.expected == "Content-Type: application/json"
+    assert assertion.actual == "application/json"
+
+
+def test_expect_header_fails(monkeypatch):
+    fake_response = make_fake_response(headers={"content-type": "multipart/form-data"})
+
+    make_fake_client(monkeypatch, response=fake_response)
+
+    fake_formatter = MagicMock()
+    monkeypatch.setattr("apix.cli.Formatter", lambda: fake_formatter)
+
+    result = runner.invoke(
+        app,
+        [
+            "GET",
+            "https://x.com",
+            "--expect-header",
+            "Content-Type: application/json",
+        ],
+    )
+
+    assert result.exit_code == 0, result.output
+
+    fake_formatter.print_assertions.assert_called_once()
+
+    assertion = fake_formatter.print_assertions.call_args.args[0]
+
+    assert assertion.passed is False
+    assert assertion.expected == "Content-Type: application/json"
+    assert assertion.actual == "multipart/form-data"
+
+
+def test_expect_json_valid(monkeypatch):
+    fake_response = make_fake_response(body={"user": "Dude"})
+
+    make_fake_client(monkeypatch, response=fake_response)
+
+    fake_formatter = MagicMock()
+    monkeypatch.setattr("apix.cli.Formatter", lambda: fake_formatter)
+
+    result = runner.invoke(
+        app,
+        [
+            "GET",
+            "https://x.com",
+            "--expect-json",
+            '{"user": "Dude"}',
+        ],
+    )
+
+    assert result.exit_code == 0, result.output
+
+    fake_formatter.print_assertions.assert_called_once()
+
+    assertion = fake_formatter.print_assertions.call_args.args[0]
+
+    assert assertion.passed is True
+    assert assertion.expected == {"user": "Dude"}
+    assert assertion.actual == {"user": "Dude"}
+
+
+def test_expect_json_different(monkeypatch):
+    fake_response = make_fake_response(body={"user": "Dude"})
+
+    make_fake_client(monkeypatch, response=fake_response)
+
+    fake_formatter = MagicMock()
+    monkeypatch.setattr("apix.cli.Formatter", lambda: fake_formatter)
+
+    result = runner.invoke(
+        app,
+        [
+            "GET",
+            "https://x.com",
+            "--expect-json",
+            '{"user": "MadMax"}',
+        ],
+    )
+
+    assert result.exit_code == 0, result.output
+
+    fake_formatter.print_assertions.assert_called_once()
+
+    assertion = fake_formatter.print_assertions.call_args.args[0]
+
+    assert assertion.passed is False
+    assert assertion.expected == {"user": "MadMax"}
+    assert assertion.actual == {"user": "Dude"}
+
+
+def test_expect_json_invalid(monkeypatch):
+    fake_response = make_fake_response(body={"user": "Dude"})
+
+    make_fake_client(monkeypatch, response=fake_response)
+
+    fake_formatter = MagicMock()
+    monkeypatch.setattr("apix.cli.Formatter", lambda: fake_formatter)
+
+    result = runner.invoke(
+        app,
+        [
+            "GET",
+            "https://x.com",
+            "--expect-json",
+            '"user": "MadMax"}',
+        ],
+    )
+
+    assert result.exit_code == 0, result.output
+
+    fake_formatter.print_error.assert_called_once()
+
+    error = fake_formatter.print_error.call_args.args[0]
+    assert "is invalid JSON" in str(error)
+
+
+def test_expect_json_ignores_key_order(monkeypatch):
+    fake_response = make_fake_response(body={"user": "Dude", "id": 1})
+
+    make_fake_client(monkeypatch, response=fake_response)
+
+    fake_formatter = MagicMock()
+    monkeypatch.setattr("apix.cli.Formatter", lambda: fake_formatter)
+
+    result = runner.invoke(
+        app,
+        [
+            "GET",
+            "https://x.com",
+            "--expect-json",
+            '{"id": 1, "user": "Dude"}',
+        ],
+    )
+
+    assert result.exit_code == 0, result.output
+
+    assertion = fake_formatter.print_assertions.call_args.args[0]
+
+    assert assertion.passed is True
+    assert assertion.expected == {"id": 1, "user": "Dude"}
+    assert assertion.actual == {"user": "Dude", "id": 1}
+
+
+def test_expect_json_valid_file(monkeypatch, tmp_path):
+    expected_file = tmp_path / "expected.json"
+    expected_file.write_text('{"user": "Dude"}')
+
+    fake_response = make_fake_response(body={"user": "Dude"})
+
+    make_fake_client(monkeypatch, response=fake_response)
+
+    fake_formatter = MagicMock()
+    monkeypatch.setattr("apix.cli.Formatter", lambda: fake_formatter)
+
+    result = runner.invoke(
+        app,
+        [
+            "GET",
+            "https://x.com",
+            "--expect-json",
+            str(expected_file),
+        ],
+    )
+
+    assert result.exit_code == 0, result.output
+
+    fake_formatter.print_assertions.assert_called_once()
+
+    assertion = fake_formatter.print_assertions.call_args.args[0]
+
+    assert assertion.passed is True
+    assert assertion.expected == {"user": "Dude"}
+    assert assertion.actual == {"user": "Dude"}
+
+
+def test_expect_json_invalid_file(monkeypatch, tmp_path):
+    expected_file = tmp_path / "expected.json"
+    expected_file.write_text('"user": "Dude"}')
+
+    fake_response = make_fake_response(body={"user": "Dude"})
+
+    make_fake_client(monkeypatch, response=fake_response)
+
+    fake_formatter = MagicMock()
+    monkeypatch.setattr("apix.cli.Formatter", lambda: fake_formatter)
+
+    result = runner.invoke(
+        app,
+        [
+            "GET",
+            "https://x.com",
+            "--expect-json",
+            str(expected_file),
+        ],
+    )
+
+    assert result.exit_code == 0, result.output
+
+    fake_formatter.print_error.assert_called_once()
+
+    error = fake_formatter.print_error.call_args.args[0]
+    assert f"Invalid JSON in {expected_file}" in str(error)
+
+
+def test_expect_response_max_time(monkeypatch):
+
+    fake_response = make_fake_response(elapsed_ms=500)
+
+    make_fake_client(monkeypatch, response=fake_response)
+    fake_formatter = MagicMock()
+    monkeypatch.setattr("apix.cli.Formatter", lambda: fake_formatter)
+
+    result = runner.invoke(
+        app,
+        [
+            "GET",
+            "https://x.com",
+            "--max-time",
+            "500",
+        ],
+    )
+
+    fake_formatter.print_assertions.assert_called_once()
+
+    assertion = fake_formatter.print_assertions.call_args.args[0]
+
+    assert assertion.passed is True
+    assert assertion.expected == 500
+    assert assertion.actual == 500
+
+
+def test_expect_response_max_time_fails(monkeypatch):
+
+    fake_response = make_fake_response(elapsed_ms=500)
+
+    make_fake_client(monkeypatch, response=fake_response)
+    fake_formatter = MagicMock()
+    monkeypatch.setattr("apix.cli.Formatter", lambda: fake_formatter)
+
+    result = runner.invoke(
+        app,
+        [
+            "GET",
+            "https://x.com",
+            "--max-time",
+            "400",
+        ],
+    )
+
+    fake_formatter.print_assertions.assert_called_once()
+
+    assertion = fake_formatter.print_assertions.call_args.args[0]
+
+    assert assertion.passed is False
+    assert assertion.expected == 400
+    assert assertion.actual == 500

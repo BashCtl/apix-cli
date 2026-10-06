@@ -28,7 +28,7 @@ def command(
     ),
     verbose: bool = typer.Option(False, "--verbose", help="Print response headers"),
     excpected_status: int | None = typer.Option(
-        None, "--excpect-status", help="Expected HTTP response code"
+        None, "--expect-status", help="Expected HTTP response code"
     ),
     expected_header: str | None = typer.Option(
         None, "--expect-header", help="Expected response header"

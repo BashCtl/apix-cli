@@ -1,7 +1,6 @@
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Protocol
-
-from pathvalidate import is_valid_filepath
 
 from apix.errors import ApiError
 from apix.models import ApiResponse
@@ -14,6 +13,10 @@ class AssertionResult:
     expected: object
     actual: object
     message: str
+
+
+def is_valid_filepath(filepath):
+    return Path(filepath).is_file()
 
 
 class Assertion(Protocol):
