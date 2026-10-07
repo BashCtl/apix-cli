@@ -33,3 +33,21 @@ class ApiResponse:
             elapsed_ms=response.elapsed.total_seconds() * 1000,
             size_bytes=len(response.content),
         )
+
+
+@dataclass
+class TestCase:
+    name: str
+    method: str
+    url: str
+    headers: dict[str, str]
+    json: str | None
+    json_file: str | None
+    expect: dict[str, Any] | None
+    timeout: float 
+
+
+@dataclass
+class TestSuite:
+    name: str
+    tests: list[TestCase]

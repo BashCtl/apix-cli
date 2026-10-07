@@ -4,6 +4,9 @@ from apix.client import ApiClient
 from apix.errors import ApiError
 from apix.formatter import Formatter
 from apix.assertions import check_all_assetions
+from apix.yaml_loader import load_yaml
+from apix.parser import parse_test_suite
+from apix.runner import run_test_suite
 
 app = typer.Typer()
 
@@ -40,6 +43,7 @@ def command(
         None, "--expect-json", help="Response body equals expected JSON"
     ),
 ):
+    """Run HTTP methods (get, post, put, patch, delete)"""
     formatter = Formatter()
     try:
         with ApiClient() as client:
@@ -59,9 +63,42 @@ def command(
             expected_json=expected_json,
         )
         formatter.print_response(response, verbose)
-        formatter.print_assertions(*assertions_result)
+        if not formatter.print_assertions(*assertions_result):
+            raise typer.Exit(1)
     except ApiError as e:
         formatter.print_error(e)
+
+
+@app.command()
+def run(filepath: str):
+    """
+    Run API test cases from a YAML test suite.
+
+    YAML `expect` supports:
+
+      expected_status  Expected HTTP status code.
+      expected_header  Expected response header.
+      max_time         Maximum response time in milliseconds.
+      expected_json    Expected JSON response body.
+
+    Example:
+
+      expect:
+        expected_status: 200
+        expected_header: "content-type: application/json"
+        max_time: 500
+        expected_json:
+          id: 1
+    """
+    formatter = Formatter()
+    try:
+        yaml_data = load_yaml(filepath)
+        test_suite = parse_test_suite(yaml_data)
+        all_passed = run_test_suite(test_suite)
+        if not all_passed:
+            raise typer.Exit(1)
+    except ApiError as exc:
+        formatter.print_error(exc)
 
 
 if __name__ == "__main__":

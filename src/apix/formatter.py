@@ -48,6 +48,7 @@ class Formatter:
         self.err_console.print(f"[red]Error:[/red] {exception!s}")
 
     def print_assertions(self, *results: AssertionResult):
+        all_passed = True
         for result in results:
             if result.passed:
                 self.console.print(f"[green][PASS][/green] {result.message}")
@@ -55,6 +56,9 @@ class Formatter:
                 self.console.print(f"[red][FAIL][/red] {result.message}")
                 self.console.print(f"   Expected: {result.expected}")
                 self.console.print(f"   Actual: {result.actual}")
+                all_passed= False
+        return all_passed
+
 
     def status_style(self, code: int) -> str:
         if code < 300:

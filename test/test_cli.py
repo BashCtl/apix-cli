@@ -40,7 +40,7 @@ def test_command_help():
 
 
 def test_missing_argument():
-    result = runner.invoke(app, ["command"])
+    result = runner.invoke(app, ["command", "get"])
     assert result.exit_code == 2
     assert "Missing argument 'url'." in result.stderr
 
@@ -53,6 +53,7 @@ def test_command_passes_args_to_client(monkeypatch):
     result = runner.invoke(
         app,
         [
+            "command",
             "POST",
             "https://api.example.com/users",
             "--json",
@@ -78,7 +79,7 @@ def test_defaults(monkeypatch):
     fake_client = make_fake_client(monkeypatch)
     monkeypatch.setattr("apix.cli.Formatter", lambda: MagicMock())
 
-    runner.invoke(app, ["GET", "https://x.com"])
+    runner.invoke(app, ["command", "GET", "https://x.com"])
 
     fake_client.request.assert_called_once_with(
         method="GET",
@@ -95,7 +96,9 @@ def test_verbose_and_timeout(monkeypatch):
     fake_formatter = MagicMock()
     monkeypatch.setattr("apix.cli.Formatter", lambda: fake_formatter)
 
-    runner.invoke(app, ["GET", "https://x.com", "--verbose", "--timeout", "3"])
+    runner.invoke(
+        app, ["command", "GET", "https://x.com", "--verbose", "--timeout", "3"]
+    )
 
     fake_formatter.print_response.assert_called_once_with("Fake Response Verbose", True)
 
@@ -111,6 +114,7 @@ def test_expect_status(monkeypatch):
     result = runner.invoke(
         app,
         [
+            "command",
             "GET",
             "https://x.com",
             "--expect-status",
@@ -132,6 +136,7 @@ def test_expect_status_fails(monkeypatch):
     result = runner.invoke(
         app,
         [
+            "command",
             "GET",
             "https://x.com",
             "--expect-status",
@@ -161,6 +166,7 @@ def test_expect_header(monkeypatch):
     result = runner.invoke(
         app,
         [
+            "command",
             "GET",
             "https://x.com",
             "--expect-header",
@@ -189,7 +195,8 @@ def test_expect_header_fails(monkeypatch):
 
     result = runner.invoke(
         app,
-        [
+        [   
+            "command",
             "GET",
             "https://x.com",
             "--expect-header",
@@ -219,6 +226,7 @@ def test_expect_json_valid(monkeypatch):
     result = runner.invoke(
         app,
         [
+            "command",
             "GET",
             "https://x.com",
             "--expect-json",
@@ -248,6 +256,7 @@ def test_expect_json_different(monkeypatch):
     result = runner.invoke(
         app,
         [
+            "command",
             "GET",
             "https://x.com",
             "--expect-json",
@@ -276,7 +285,8 @@ def test_expect_json_invalid(monkeypatch):
 
     result = runner.invoke(
         app,
-        [
+        [   
+            "command",
             "GET",
             "https://x.com",
             "--expect-json",
@@ -303,6 +313,7 @@ def test_expect_json_ignores_key_order(monkeypatch):
     result = runner.invoke(
         app,
         [
+            "command",
             "GET",
             "https://x.com",
             "--expect-json",
@@ -332,7 +343,8 @@ def test_expect_json_valid_file(monkeypatch, tmp_path):
 
     result = runner.invoke(
         app,
-        [
+        [   
+            "command",
             "GET",
             "https://x.com",
             "--expect-json",
@@ -365,6 +377,7 @@ def test_expect_json_invalid_file(monkeypatch, tmp_path):
     result = runner.invoke(
         app,
         [
+            "command",
             "GET",
             "https://x.com",
             "--expect-json",
@@ -391,6 +404,7 @@ def test_expect_response_max_time(monkeypatch):
     result = runner.invoke(
         app,
         [
+            "command",
             "GET",
             "https://x.com",
             "--max-time",
@@ -418,6 +432,7 @@ def test_expect_response_max_time_fails(monkeypatch):
     result = runner.invoke(
         app,
         [
+            "command",
             "GET",
             "https://x.com",
             "--max-time",
