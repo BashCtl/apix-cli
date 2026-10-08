@@ -44,10 +44,12 @@ class TestCase:
     json: str | None
     json_file: str | None
     expect: dict[str, Any] | None
-    timeout: float 
+    timeout: float
 
 
 @dataclass
 class TestSuite:
+    __test__ = False
+    
     name: str
     tests: list[TestCase]

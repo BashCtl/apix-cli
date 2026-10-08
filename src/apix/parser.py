@@ -4,8 +4,16 @@ from apix.yaml_loader import load_yaml
 
 
 def parse_test_suite(data: dict) -> TestSuite:
+    if not isinstance(data, dict):
+        raise ApiError("Test suite must be a YAML mapping")
+
+    tests = data.get("tests")
+
+    if not isinstance(tests, list):
+        raise ApiError("'tests' must be a list")
+
     try:
-        tests: list[TestCase] = [
+        test_cases = [
             TestCase(
                 name=test["name"],
                 method=test["method"],
@@ -16,8 +24,13 @@ def parse_test_suite(data: dict) -> TestSuite:
                 expect=test.get("expect"),
                 timeout=test.get("timeout", 10),
             )
-            for test in data["tests"]
+            for test in tests
         ]
-        return TestSuite(name=data["name"], tests=tests)
+
+        return TestSuite(
+            name=data["name"],
+            tests=test_cases,
+        )
+
     except KeyError as exc:
         raise ApiError(f"Missing required key: {exc.args[0]!r}") from exc
