@@ -1,6 +1,11 @@
-from apix.models import TestSuite, TestCase
+import re
+from typing import Any
+
 from apix.errors import ApiError
-from apix.yaml_loader import load_yaml
+from apix.models import TestCase, TestSuite
+
+
+VARIABLE_PATTERN = re.compile(r"\$\{\{\s*([A-Za-z_][A-Za-z0-9_]*)\s*\}\}")
 
 
 def parse_test_suite(data: dict) -> TestSuite:
@@ -34,3 +39,27 @@ def parse_test_suite(data: dict) -> TestSuite:
 
     except KeyError as exc:
         raise ApiError(f"Missing required key: {exc.args[0]!r}") from exc
+
+
+def resolve_variables(
+    value: Any,
+    variables: dict[str, str | None],
+) -> Any:
+    if isinstance(value, dict):
+        return {key: resolve_variables(item, variables) for key, item in value.items()}
+
+    if isinstance(value, list):
+        return [resolve_variables(item, variables) for item in value]
+
+    if not isinstance(value, str):
+        return value
+
+    def replace(match: re.Match[str]) -> str:
+        name = match.group(1)
+
+        if name not in variables or variables[name] is None:
+            raise ApiError(f"Undefined environment variable: {name}")
+
+        return str(variables[name])
+
+    return VARIABLE_PATTERN.sub(replace, value)

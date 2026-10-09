@@ -70,7 +70,7 @@ def command(
 
 
 @app.command()
-def run(filepath: str):
+def run(filepath: str, env:str|None=typer.Option(None, "--env", help="")):
     """
     Run API test cases from a YAML test suite.
 

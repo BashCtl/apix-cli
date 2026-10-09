@@ -23,6 +23,7 @@ def run_test_suite(suite: TestSuite) -> bool:
                     json_file=test.json_file,
                     timeout=test.timeout,
                 )
+            formatter.print_response(response)
             result: list[AssertionResult] = check_all_assetions(
                 response, **(test.expect or {})
             )
