@@ -37,6 +37,8 @@ class ApiResponse:
 
 @dataclass
 class TestCase:
+    __test__ = False
+    
     name: str
     method: str
     url: str

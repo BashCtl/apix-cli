@@ -4,23 +4,9 @@ from typer.testing import CliRunner
 
 from apix.assertions import AssertionResult
 from apix.cli import app
+from conftest import make_fake_response, make_fake_client
 
 runner = CliRunner()
-
-
-def make_fake_client(monkeypatch, response=None):
-    fake_client = MagicMock()
-    fake_client.__enter__.return_value = fake_client
-    fake_client.request.return_value = response
-    monkeypatch.setattr("apix.cli.ApiClient", lambda: fake_client)
-    return fake_client
-
-
-def make_fake_response(**kwargs):
-    response = MagicMock()
-    for name, value in kwargs.items():
-        setattr(response, name, value)
-    return response
 
 
 def test_command_help():
@@ -195,7 +181,7 @@ def test_expect_header_fails(monkeypatch):
 
     result = runner.invoke(
         app,
-        [   
+        [
             "command",
             "GET",
             "https://x.com",
@@ -285,7 +271,7 @@ def test_expect_json_invalid(monkeypatch):
 
     result = runner.invoke(
         app,
-        [   
+        [
             "command",
             "GET",
             "https://x.com",
@@ -343,7 +329,7 @@ def test_expect_json_valid_file(monkeypatch, tmp_path):
 
     result = runner.invoke(
         app,
-        [   
+        [
             "command",
             "GET",
             "https://x.com",
@@ -447,3 +433,9 @@ def test_expect_response_max_time_fails(monkeypatch):
     assert assertion.passed is False
     assert assertion.expected == 400
     assert assertion.actual == 500
+
+
+def test_run_help():
+    result = runner.invoke(app, ["run", "--help"])
+    assert "Usage: root run [OPTIONS] {filepath}" in result.stdout
+    assert "Run API test cases from a YAML test suite.  " in result.stdout
