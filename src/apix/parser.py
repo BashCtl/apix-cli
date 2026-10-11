@@ -4,7 +4,6 @@ from typing import Any
 from apix.errors import ApiError
 from apix.models import TestCase, TestSuite
 
-
 VARIABLE_PATTERN = re.compile(r"\$\{\{\s*([A-Za-z_][A-Za-z0-9_]*)\s*\}\}")
 
 
@@ -18,19 +17,30 @@ def parse_test_suite(data: dict) -> TestSuite:
         raise ApiError("'tests' must be a list")
 
     try:
-        test_cases = [
-            TestCase(
-                name=test["name"],
-                method=test["method"],
-                url=test["url"],
-                headers=test.get("headers", {}),
-                json=test.get("json"),
-                json_file=test.get("json_file"),
-                expect=test.get("expect"),
-                timeout=test.get("timeout", 10),
+        test_cases = []
+        for test in tests:
+            if not isinstance(test, dict):
+                raise ApiError("Each test case must be a YAML mapping")
+
+            expect: dict = dict(test.get("expect", {}))
+
+            if "expected_status" in expect:
+                expect["expected_status"] = int(expect["expected_status"])
+            if "max_time" in expect:
+                expect["max_time"] = int(expect["max_time"])
+
+            test_cases.append(
+                TestCase(
+                    name=test["name"],
+                    method=test["method"],
+                    url=test["url"],
+                    headers=test.get("headers", {}),
+                    json=test.get("json"),
+                    json_file=test.get("json_file"),
+                    expect=expect,
+                    timeout=float(test.get("timeout", 10)),
+                )
             )
-            for test in tests
-        ]
 
         return TestSuite(
             name=data["name"],

@@ -7,6 +7,8 @@ from apix.assertions import check_all_assetions
 from apix.yaml_loader import load_yaml
 from apix.parser import parse_test_suite
 from apix.runner import run_test_suite
+from apix.env_loader import load_env
+from apix.parser import resolve_variables
 
 app = typer.Typer()
 
@@ -70,7 +72,7 @@ def command(
 
 
 @app.command()
-def run(filepath: str, env:str|None=typer.Option(None, "--env", help="")):
+def run(filepath: str, env: str | None = typer.Option(None, "--env", help="")):
     """
     Run API test cases from a YAML test suite.
 
@@ -93,6 +95,11 @@ def run(filepath: str, env:str|None=typer.Option(None, "--env", help="")):
     formatter = Formatter()
     try:
         yaml_data = load_yaml(filepath)
+
+        if env:
+            variables = load_env(env)
+            yaml_data = resolve_variables(yaml_data, variables)
+            
         test_suite = parse_test_suite(yaml_data)
         all_passed = run_test_suite(test_suite)
         if not all_passed:

@@ -1,10 +1,11 @@
 from unittest.mock import MagicMock
 
+from conftest import make_fake_client, make_fake_response
 from typer.testing import CliRunner
-
+import pytest
+from apix.errors import ApiError
 from apix.assertions import AssertionResult
 from apix.cli import app
-from conftest import make_fake_response, make_fake_client
 
 runner = CliRunner()
 
@@ -439,3 +440,73 @@ def test_run_help():
     result = runner.invoke(app, ["run", "--help"])
     assert "Usage: root run [OPTIONS] {filepath}" in result.stdout
     assert "Run API test cases from a YAML test suite.  " in result.stdout
+
+
+def test_runs_suite_without_env(mocks):
+    result = runner.invoke(app, ["run", "suite.yaml"])
+
+    assert result.exit_code == 0, result.output
+    mocks.load_yaml.assert_called_once_with("suite.yaml")
+    mocks.parse_test_suite.assert_called_once_with({"raw": True})
+    mocks.run_test_suite.assert_called_once_with("suite")
+    mocks.load_env.assert_not_called()
+    mocks.resolve_variables.assert_not_called()
+    mocks.formatter.print_error.assert_not_called()
+
+
+def test_env_is_loaded_and_variables_are_resolved_before_parsing(mocks):
+    result = runner.invoke(app, ["run", "suite.yaml", "--env", ".env"])
+
+    assert result.exit_code == 0, result.output
+    mocks.load_env.assert_called_once_with(".env")
+    mocks.resolve_variables.assert_called_once_with({"raw": True}, {"token": "abc"})
+    mocks.parse_test_suite.assert_called_once_with({"resolved": True})
+    mocks.run_test_suite.assert_called_once_with("suite")
+
+
+def test_empty_env_value_is_ignored(mocks):
+    result = runner.invoke(app, ["run", "suite.yaml", "--env", ""])
+
+    assert result.exit_code == 0, result.output
+    mocks.load_env.assert_not_called()
+    mocks.resolve_variables.assert_not_called()
+    mocks.parse_test_suite.assert_called_once_with({"raw": True})
+
+
+@pytest.mark.parametrize(
+    "stage",
+    [
+        "load_yaml",
+        "load_env",
+        "resolve_variables",
+        "parse_test_suite",
+        "run_test_suite",
+    ],
+)
+def test_api_error_from_any_step_is_printed(mocks, stage):
+    err = ApiError(f"{stage} failed")
+    getattr(mocks, stage).side_effect = err
+
+    runner.invoke(app, ["run", "suite.yaml", "--env", ".env"])
+
+    mocks.formatter.print_error.assert_called_once_with(err)
+
+
+def test_api_error_while_loading_yaml_stops_everything_else(mocks):
+    mocks.load_yaml.side_effect = ApiError("bad yaml")
+
+    runner.invoke(app, ["run", "suite.yaml", "--env", ".env"])
+
+    mocks.load_env.assert_not_called()
+    mocks.resolve_variables.assert_not_called()
+    mocks.parse_test_suite.assert_not_called()
+    mocks.run_test_suite.assert_not_called()
+
+
+def test_api_error_while_resolving_variables_does_not_run_the_suite(mocks):
+    mocks.resolve_variables.side_effect = ApiError("Variable 'x' is not defined")
+
+    runner.invoke(app, ["run", "suite.yaml", "--env", ".env"])
+
+    mocks.parse_test_suite.assert_not_called()
+    mocks.run_test_suite.assert_not_called()

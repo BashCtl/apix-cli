@@ -8,8 +8,19 @@ from apix.yaml_loader import load_yaml
 
 def load_env(filepath) -> dict:
     suffix = Path(filepath).suffix.lower()
+
     if suffix in {".yaml", ".yml"}:
-        return load_yaml(filepath)
+        data = load_yaml(filepath)
+        
+        if not isinstance(data, dict):
+            raise ApiError("Environment YAML must be a mapping")
+
+        variables = data.get("variables", {})
+
+        if not isinstance(variables, dict):
+            raise ApiError("'variables' must be a mapping")
+
+        return variables
     elif filepath.endswith(".env"):
         return load_dotenv_file(filepath)
 
