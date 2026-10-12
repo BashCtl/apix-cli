@@ -8,7 +8,7 @@ from apix.yaml_loader import load_yaml
 from apix.parser import parse_test_suite
 from apix.runner import run_test_suite
 from apix.env_loader import load_env
-from apix.parser import resolve_variables
+from apix.parser import resolve_variables, parse_vars
 
 app = typer.Typer()
 
@@ -72,7 +72,17 @@ def command(
 
 
 @app.command()
-def run(filepath: str, env: str | None = typer.Option(None, "--env", help="")):
+def run(
+    filepath: str,
+    env: str | None = typer.Option(
+        None, "--env", help="Path to an env or yaml file with variables"
+    ),
+    var: list[str] = typer.Option(
+        [],
+        "--var",
+        help="Variable as KEY=VALUE, repeatable. Overrides values from --env",
+    ),
+):
     """
     Run API test cases from a YAML test suite.
 
@@ -93,13 +103,18 @@ def run(filepath: str, env: str | None = typer.Option(None, "--env", help="")):
           id: 1
     """
     formatter = Formatter()
+
+    variables = {}
     try:
         yaml_data = load_yaml(filepath)
-
+        cli_vars = parse_vars(var)
         if env:
-            variables = load_env(env)
+            variables.update(load_env(env))
+
+        variables.update(cli_vars)
+        if variables:
             yaml_data = resolve_variables(yaml_data, variables)
-            
+
         test_suite = parse_test_suite(yaml_data)
         all_passed = run_test_suite(test_suite)
         if not all_passed:

@@ -1,11 +1,12 @@
 from unittest.mock import MagicMock
 
+import pytest
 from conftest import make_fake_client, make_fake_response
 from typer.testing import CliRunner
-import pytest
-from apix.errors import ApiError
+
 from apix.assertions import AssertionResult
 from apix.cli import app
+from apix.errors import ApiError
 
 runner = CliRunner()
 
@@ -510,3 +511,68 @@ def test_api_error_while_resolving_variables_does_not_run_the_suite(mocks):
 
     mocks.parse_test_suite.assert_not_called()
     mocks.run_test_suite.assert_not_called()
+
+
+def test_var_only_resolves_without_loading_env_file(mocks):
+    result = runner.invoke(app, ["run", "suite.yaml", "--var", "status=200"])
+
+    assert result.exit_code == 0, result.output
+    mocks.load_env.assert_not_called()
+    mocks.resolve_variables.assert_called_once_with({"raw": True}, {"status": "200"})
+    mocks.parse_test_suite.assert_called_once_with({"resolved": True})
+
+
+def test_multiple_vars(mocks):
+    runner.invoke(
+        app, ["run", "suite.yaml", "--var", "token=TOKEN", "--var", "status=200"]
+    )
+
+    mocks.resolve_variables.assert_called_once_with(
+        {"raw": True}, {"token": "TOKEN", "status": "200"}
+    )
+
+
+def test_var_value_may_contain_equals_sign(mocks):
+    runner.invoke(app, ["run", "suite.yaml", "--var", "url=https://x.com?a=b"])
+
+    assert mocks.resolve_variables.call_args.args[1] == {"url": "https://x.com?a=b"}
+
+
+def test_env_file_and_vars_are_merged(mocks):
+    mocks.load_env.return_value = {"token": "abc", "host": "dev"}
+
+    runner.invoke(app, ["run", "suite.yaml", "--env", ".env", "--var", "status=200"])
+
+    mocks.resolve_variables.assert_called_once_with(
+        {"raw": True}, {"token": "abc", "host": "dev", "status": "200"}
+    )
+
+
+def test_var_overrides_env_file(mocks):
+    mocks.load_env.return_value = {"status": "404", "token": "abc"}
+
+    runner.invoke(app, ["run", "suite.yaml", "--env", ".env", "--var", "status=200"])
+
+    assert mocks.resolve_variables.call_args.args[1] == {
+        "status": "200",
+        "token": "abc",
+    }
+
+
+def test_repeated_var_keeps_last_value(mocks):
+    runner.invoke(app, ["run", "suite.yaml", "--var", "a=1", "--var", "a=2"])
+
+    assert mocks.resolve_variables.call_args.args[1] == {"a": "2"}
+
+
+def test_empty_env_with_var_still_resolves(mocks):
+    runner.invoke(app, ["run", "suite.yaml", "--env", "", "--var", "a=1"])
+
+    mocks.load_env.assert_not_called()
+    mocks.resolve_variables.assert_called_once_with({"raw": True}, {"a": "1"})
+
+
+def test_no_env_and_no_var_skips_resolving(mocks):
+    runner.invoke(app, ["runsuite.yaml"])
+
+    mocks.resolve_variables.assert_not_called()

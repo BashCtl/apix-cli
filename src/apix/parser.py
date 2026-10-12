@@ -73,3 +73,14 @@ def resolve_variables(
         return str(variables[name])
 
     return VARIABLE_PATTERN.sub(replace, value)
+
+
+def parse_vars(items: list[str]) -> dict[str, str]:
+    variables = {}
+    for item in items:
+        key, sep, value = item.partition("=")
+        key = key.strip()
+        if not sep or not key:
+            raise ApiError(f"{item:r} must be KEY=VAlUE format")
+        variables[key] = value
+    return variables
