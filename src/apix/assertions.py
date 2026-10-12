@@ -116,7 +116,7 @@ class ResponseTimeAssertion:
         )
 
 
-def check_all_assetions(response: ApiResponse, **kwargs) -> list[AssertionResult]:
+def check_all_assertions(response: ApiResponse, **kwargs) -> list[AssertionResult]:
     assertions = []
 
     expected_status = kwargs.get("expected_status", None)

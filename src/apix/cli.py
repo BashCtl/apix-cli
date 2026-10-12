@@ -3,7 +3,7 @@ import typer
 from apix.client import ApiClient
 from apix.errors import ApiError
 from apix.formatter import Formatter
-from apix.assertions import check_all_assetions
+from apix.assertions import check_all_assertions
 from apix.yaml_loader import load_yaml
 from apix.parser import parse_test_suite
 from apix.runner import run_test_suite
@@ -57,7 +57,7 @@ def command(
                 json_file=json_file,
                 timeout=timeout,
             )
-        assertions_result = check_all_assetions(
+        assertions_result = check_all_assertions(
             response=response,
             expected_status=excpected_status,
             max_time=max_time,

@@ -35,7 +35,7 @@ def mocks(monkeypatch):
 
     monkeypatch.setattr("apix.runner.ApiClient", lambda: client)
     monkeypatch.setattr("apix.runner.Formatter", lambda: formatter)
-    monkeypatch.setattr("apix.runner.check_all_assetions", check)
+    monkeypatch.setattr("apix.runner.check_all_assertions", check)
     return SimpleNamespace(client=client, formatter=formatter, check=check)
 
 
@@ -93,9 +93,13 @@ def test_case_without_http_method(mocks):
     )
 
     del case.method
-    with pytest.raises(ApiError) as excinfo:
-        run_test_suite(TestSuite(name="Users  Suite", tests=[case]))
-    assert "'TestCase' object has no attribute 'method'" in str(excinfo.value)
+
+    run_test_suite(TestSuite(name="Users  Suite", tests=[case]))
+
+    mocks.formatter.print_error.assert_called_once()
+    error = mocks.formatter.print_error.call_args.args[0]
+    assert isinstance(error, ApiError)
+    assert str(error) == "TestCase must have method attribute"
 
 
 def test_case_with_expect_none(mocks):

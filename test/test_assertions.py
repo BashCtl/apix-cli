@@ -6,7 +6,7 @@ from apix.assertions import (
     JsonValueAssertion,
     ResponseTimeAssertion,
     StatusAssertion,
-    check_all_assetions,
+    check_all_assertions,
 )
 from apix.errors import ApiError
 from apix.models import ApiResponse
@@ -179,13 +179,13 @@ class TestResponseTimeAssertion:
 
 class TestCheckAllAssertion:
     def test_no_kwargs_returns_empty_list(self):
-        assert check_all_assetions(make_response()) == []
+        assert check_all_assertions(make_response()) == []
 
     def test_unknown_kwargs_are_ignored(self):
-        assert check_all_assetions(make_response(), something_else=1) == []
+        assert check_all_assertions(make_response(), something_else=1) == []
 
     def test_only_status(self):
-        results = check_all_assetions(
+        results = check_all_assertions(
             make_response(status_code=200), expected_status=200
         )
 
@@ -194,19 +194,19 @@ class TestCheckAllAssertion:
         assert results[0].expected == 200
 
     def test_only_header(self):
-        results = check_all_assetions(make_response(), expected_header="a: b")
+        results = check_all_assertions(make_response(), expected_header="a: b")
 
         assert len(results) == 1
         assert results[0].expected == "a: b"
 
     def test_only_max_time(self):
-        results = check_all_assetions(make_response(elapsed_ms=10), max_time=100)
+        results = check_all_assertions(make_response(elapsed_ms=10), max_time=100)
 
         assert len(results) == 1
         assert results[0].passed is True
 
     def test_only_json(self, fake_json_util):
-        results = check_all_assetions(
+        results = check_all_assertions(
             make_response(body={"from": "string"}), expected_json='{"a": 1}'
         )
 
@@ -225,8 +225,8 @@ class TestCheckAllAssertion:
     )
     def test_falsy_values_skip_the_assertion(self, kwargs):
         # Current behaviour: truthiness is used, so 0 and "" disable the check.
-        assert check_all_assetions(make_response(), **kwargs) == []
+        assert check_all_assertions(make_response(), **kwargs) == []
 
     def test_invalid_json_raises_api_error(self, fake_json_util):
         with pytest.raises(ApiError):
-            check_all_assetions(make_response(), expected_json="garbage")
+            check_all_assertions(make_response(), expected_json="garbage")
