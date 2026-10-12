@@ -1,8 +1,10 @@
 import re
+
 from typing import Any
 
 from apix.errors import ApiError
 from apix.models import TestCase, TestSuite
+from functools import reduce
 
 VARIABLE_PATTERN = re.compile(r"\$\{\{\s*([A-Za-z_][A-Za-z0-9_]*)\s*\}\}")
 
@@ -24,6 +26,15 @@ def parse_test_suite(data: dict) -> TestSuite:
 
             expect: dict = dict(test.get("expect", {}))
 
+            extract = test.get("extract", {})
+
+            if isinstance(extract, dict):
+                extract = dict(extract)
+            else:
+                raise ApiError(
+                    f"'extract' must be a YAML mapping, got {type(extract).__name__}"
+                )
+
             if "expected_status" in expect:
                 expect["expected_status"] = int(expect["expected_status"])
             if "max_time" in expect:
@@ -39,6 +50,7 @@ def parse_test_suite(data: dict) -> TestSuite:
                     json_file=test.get("json_file"),
                     expect=expect,
                     timeout=float(test.get("timeout", 10)),
+                    extract=extract,
                 )
             )
 
@@ -81,6 +93,44 @@ def parse_vars(items: list[str]) -> dict[str, str]:
         key, sep, value = item.partition("=")
         key = key.strip()
         if not sep or not key:
-            raise ApiError(f"{item:r} must be KEY=VAlUE format")
+            raise ApiError(f"{item} must be KEY=VAlUE format")
         variables[key] = value
+    return variables
+
+
+def _get_step(obj, key):
+    if isinstance(obj, list):
+        index = int(key)
+        if index < 0:
+            raise ValueError("Negative list indexes are not supported")
+        return obj[index]
+    return obj[key]
+
+
+def extract_variables(body, extract):
+    variables = {}
+
+    if not isinstance(body, dict):
+        raise ApiError("For extraction response body must be a dictionary")
+
+    for variable, path in extract.items():
+        if not isinstance(path, str):
+            raise ApiError(f"path must be a string, got {type(path).__name__}")
+
+        keys = path.split(".")
+        if not all(keys):
+            raise ApiError(f"'{path}' is not a valid path for extraction '{variable}'")
+
+        try:
+            value = reduce(_get_step, keys, body)
+        except (KeyError, IndexError, TypeError, ValueError) as exc:
+            raise ApiError(
+                f"'{path}' was not found in response for extraction '{variable}'"
+            ) from exc
+
+        if value is None:
+            raise ApiError(f"Extracted value is None for '{variable}' variable")
+
+        variables[variable] = value
+
     return variables

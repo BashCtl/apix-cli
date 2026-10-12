@@ -112,11 +112,9 @@ def run(
             variables.update(load_env(env))
 
         variables.update(cli_vars)
-        if variables:
-            yaml_data = resolve_variables(yaml_data, variables)
 
         test_suite = parse_test_suite(yaml_data)
-        all_passed = run_test_suite(test_suite)
+        all_passed = run_test_suite(test_suite, variables)
         if not all_passed:
             raise typer.Exit(1)
     except ApiError as exc:

@@ -1,4 +1,4 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Any
 
 import httpx
@@ -38,7 +38,7 @@ class ApiResponse:
 @dataclass
 class TestCase:
     __test__ = False
-    
+
     name: str
     method: str
     url: str
@@ -47,11 +47,12 @@ class TestCase:
     json_file: str | None
     expect: dict[str, Any] | None
     timeout: float
+    extract: dict[str, str] = field(default_factory=dict)
 
 
 @dataclass
 class TestSuite:
     __test__ = False
-    
+
     name: str
     tests: list[TestCase]

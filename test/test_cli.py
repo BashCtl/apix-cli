@@ -449,20 +449,17 @@ def test_runs_suite_without_env(mocks):
     assert result.exit_code == 0, result.output
     mocks.load_yaml.assert_called_once_with("suite.yaml")
     mocks.parse_test_suite.assert_called_once_with({"raw": True})
-    mocks.run_test_suite.assert_called_once_with("suite")
+    mocks.run_test_suite.assert_called_once_with("suite", {})
     mocks.load_env.assert_not_called()
-    mocks.resolve_variables.assert_not_called()
     mocks.formatter.print_error.assert_not_called()
 
 
-def test_env_is_loaded_and_variables_are_resolved_before_parsing(mocks):
+def test_env_file_variables_are_passed_to_the_runner(mocks):
     result = runner.invoke(app, ["run", "suite.yaml", "--env", ".env"])
 
     assert result.exit_code == 0, result.output
     mocks.load_env.assert_called_once_with(".env")
-    mocks.resolve_variables.assert_called_once_with({"raw": True}, {"token": "abc"})
-    mocks.parse_test_suite.assert_called_once_with({"resolved": True})
-    mocks.run_test_suite.assert_called_once_with("suite")
+    mocks.run_test_suite.assert_called_once_with("suite", {"token": "abc"})
 
 
 def test_empty_env_value_is_ignored(mocks):
@@ -479,7 +476,6 @@ def test_empty_env_value_is_ignored(mocks):
     [
         "load_yaml",
         "load_env",
-        "resolve_variables",
         "parse_test_suite",
         "run_test_suite",
     ],
@@ -504,38 +500,10 @@ def test_api_error_while_loading_yaml_stops_everything_else(mocks):
     mocks.run_test_suite.assert_not_called()
 
 
-def test_api_error_while_resolving_variables_does_not_run_the_suite(mocks):
-    mocks.resolve_variables.side_effect = ApiError("Variable 'x' is not defined")
+def test_no_env_and_no_var_skips_resolving(mocks):
+    runner.invoke(app, ["runsuite.yaml"])
 
-    runner.invoke(app, ["run", "suite.yaml", "--env", ".env"])
-
-    mocks.parse_test_suite.assert_not_called()
-    mocks.run_test_suite.assert_not_called()
-
-
-def test_var_only_resolves_without_loading_env_file(mocks):
-    result = runner.invoke(app, ["run", "suite.yaml", "--var", "status=200"])
-
-    assert result.exit_code == 0, result.output
-    mocks.load_env.assert_not_called()
-    mocks.resolve_variables.assert_called_once_with({"raw": True}, {"status": "200"})
-    mocks.parse_test_suite.assert_called_once_with({"resolved": True})
-
-
-def test_multiple_vars(mocks):
-    runner.invoke(
-        app, ["run", "suite.yaml", "--var", "token=TOKEN", "--var", "status=200"]
-    )
-
-    mocks.resolve_variables.assert_called_once_with(
-        {"raw": True}, {"token": "TOKEN", "status": "200"}
-    )
-
-
-def test_var_value_may_contain_equals_sign(mocks):
-    runner.invoke(app, ["run", "suite.yaml", "--var", "url=https://x.com?a=b"])
-
-    assert mocks.resolve_variables.call_args.args[1] == {"url": "https://x.com?a=b"}
+    mocks.resolve_variables.assert_not_called()
 
 
 def test_env_file_and_vars_are_merged(mocks):
@@ -543,8 +511,8 @@ def test_env_file_and_vars_are_merged(mocks):
 
     runner.invoke(app, ["run", "suite.yaml", "--env", ".env", "--var", "status=200"])
 
-    mocks.resolve_variables.assert_called_once_with(
-        {"raw": True}, {"token": "abc", "host": "dev", "status": "200"}
+    mocks.run_test_suite.assert_called_once_with(
+        "suite", {"token": "abc", "host": "dev", "status": "200"}
     )
 
 
@@ -553,26 +521,10 @@ def test_var_overrides_env_file(mocks):
 
     runner.invoke(app, ["run", "suite.yaml", "--env", ".env", "--var", "status=200"])
 
-    assert mocks.resolve_variables.call_args.args[1] == {
-        "status": "200",
-        "token": "abc",
-    }
+    assert mocks.run_test_suite.call_args.args[1] == {"status": "200", "token": "abc"}
 
 
 def test_repeated_var_keeps_last_value(mocks):
     runner.invoke(app, ["run", "suite.yaml", "--var", "a=1", "--var", "a=2"])
 
-    assert mocks.resolve_variables.call_args.args[1] == {"a": "2"}
-
-
-def test_empty_env_with_var_still_resolves(mocks):
-    runner.invoke(app, ["run", "suite.yaml", "--env", "", "--var", "a=1"])
-
-    mocks.load_env.assert_not_called()
-    mocks.resolve_variables.assert_called_once_with({"raw": True}, {"a": "1"})
-
-
-def test_no_env_and_no_var_skips_resolving(mocks):
-    runner.invoke(app, ["runsuite.yaml"])
-
-    mocks.resolve_variables.assert_not_called()
+    assert mocks.run_test_suite.call_args.args[1] == {"a": "2"}

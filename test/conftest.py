@@ -54,3 +54,23 @@ def mocks(monkeypatch):
         monkeypatch.setattr(f"apix.cli.{name}", getattr(m, name))
     monkeypatch.setattr("apix.cli.Formatter", lambda: m.formatter)
     return m
+
+
+@pytest.fixture
+def body():
+    return {
+        "user": {
+            "id": 1,
+            "name": "Alice",
+            "tags": ["a", "b", "c"],
+            "profile": None,
+        },
+        "items": [
+            {"name": "first", "price": 10},
+            {"name": "second", "price": 20},
+        ],
+        "numeric_keys": {"0": "zero-as-string-key"},
+        "empty_list": [],
+        "zero": 0,
+        "flag": False,
+    }
