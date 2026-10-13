@@ -28,7 +28,6 @@ def run_test_suite(suite: TestSuite, variables: dict[str, Any] | None = None) ->
 
 def run_test(client, test, context, formatter):
     method = getattr(test, "method", None)
-
     if method is None:
         raise ApiError("TestCase must have method attribute")
 
@@ -38,6 +37,12 @@ def run_test(client, test, context, formatter):
     json_str = resolve_variables(test.json, context)
     json_file = resolve_variables(test.json_file, context)
     timeout = resolve_variables(test.timeout, context)
+    expect = resolve_variables(test.expect or {}, context)
+
+    if "expected_status" in expect:
+            expect["expected_status"] = int(expect["expected_status"])
+    if "max_time" in expect:
+            expect["max_time"] = int(expect["max_time"])
 
     response = client.request(
         method=method,
@@ -50,7 +55,7 @@ def run_test(client, test, context, formatter):
 
     formatter.print_response(response)
     result: list[AssertionResult] = check_all_assertions(
-        response, **(test.expect or {})
+        response, **(expect or {})
     )
     passed: bool = formatter.print_assertions(*result)
 

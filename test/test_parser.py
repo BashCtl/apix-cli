@@ -112,10 +112,10 @@ def test_parse_data_to_test_suite_with_invalid_extract():
         (["a=1"], {"a": "1"}),
         (["a=1", "b=2"], {"a": "1", "b": "2"}),
         (["a=1", "a=2"], {"a": "2"}),
-        (["a="], {"a": ""}),                           # empty value is allowed
-        (["a=b=c"], {"a": "b=c"}),                     # first "=" splits
-        ([" a =1"], {"a": "1"}),                       # key is stripped
-        (["a= spaced "], {"a": " spaced "}),           # value is kept as given
+        (["a="], {"a": ""}),                           
+        (["a=b=c"], {"a": "b=c"}),                     
+        ([" a =1"], {"a": "1"}),                       
+        (["a= spaced "], {"a": " spaced "}),           
         (["url=https://x.com?q=1"], {"url": "https://x.com?q=1"}),
     ],
 )

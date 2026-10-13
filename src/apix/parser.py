@@ -35,11 +35,6 @@ def parse_test_suite(data: dict) -> TestSuite:
                     f"'extract' must be a YAML mapping, got {type(extract).__name__}"
                 )
 
-            if "expected_status" in expect:
-                expect["expected_status"] = int(expect["expected_status"])
-            if "max_time" in expect:
-                expect["max_time"] = int(expect["max_time"])
-
             test_cases.append(
                 TestCase(
                     name=test["name"],

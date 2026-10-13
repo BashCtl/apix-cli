@@ -8,7 +8,7 @@ from apix.yaml_loader import load_yaml
 from apix.parser import parse_test_suite
 from apix.runner import run_test_suite
 from apix.env_loader import load_env
-from apix.parser import resolve_variables, parse_vars
+from apix.parser import  parse_vars
 
 app = typer.Typer()
 
