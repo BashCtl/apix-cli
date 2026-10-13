@@ -1,7 +1,7 @@
 from http import HTTPStatus
+import json
 
 from rich.console import Console
-from rich.json import JSON
 from rich.markup import escape
 
 from apix.models import ApiResponse
@@ -39,8 +39,8 @@ class Formatter:
         self.console.print(f"Size: {size_bytes} bytes\n")
         self.console.print("Response:")
 
-        if isinstance(body, dict):
-            self.console.print(JSON.from_data(body, indent=2))
+        if response.body_is_json:
+            self.console.print(json.dumps(body, indent=2, ensure_ascii=False), markup=False)
         else:
             self.console.print(body, markup=False)
 
@@ -54,8 +54,12 @@ class Formatter:
                 self.console.print(f"[green][PASS][/green] {result.message}")
             else:
                 self.console.print(f"[red][FAIL][/red] {result.message}")
-                self.console.print(f"   Expected: {result.expected}")
-                self.console.print(f"   Actual: {result.actual}")
+                self.console.print(
+                    f"   Expected: {self.format_value(result.expected)}", markup=False
+                )
+                self.console.print(
+                    f"   Actual: {self.format_value(result.actual)}", markup=False
+                )
                 all_passed= False
         return all_passed
 
@@ -72,3 +76,12 @@ class Formatter:
         for name, value in headers.items():
             lines.append(f" '{name}': '{value}'")
         return "\n".join(lines) + "\n"
+
+    def format_value(self, value, limit: int = 500) -> str:
+        try:
+            rendered = json.dumps(value, indent=2, ensure_ascii=False, default=str)
+        except (TypeError, ValueError):
+            rendered = repr(value)
+        if len(rendered) > limit:
+            return rendered[:limit] + "… (truncated)"
+        return rendered

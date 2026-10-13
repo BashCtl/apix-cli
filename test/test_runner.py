@@ -73,6 +73,22 @@ def test_returns_false_if_any_test_fails_but_still_runs_all(mocks):
     assert mocks.formatter.print_assertions.call_count == 3
 
 
+def test_invalid_expected_value_fails_case_and_continues(mocks):
+    bad_case = make_case(expect={"expected_status": "not-a-status"})
+    next_case = make_case(name="Next test")
+
+    assert run_test_suite(
+        TestSuite(name="Users Suite", tests=[bad_case, next_case])
+    ) is False
+
+    assert mocks.client.request.call_count == 1
+    assert mocks.check.call_count == 1
+    mocks.formatter.print_error.assert_called_once()
+    error = mocks.formatter.print_error.call_args.args[0]
+    assert isinstance(error, ApiError)
+    assert "Invalid expected_status" in str(error)
+
+
 def test_empty_suite_returns_true(mocks):
     suite = TestSuite(name="Empty Suite", tests=[])
 

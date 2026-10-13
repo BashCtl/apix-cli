@@ -22,6 +22,12 @@ def run_test_suite(suite: TestSuite, variables: dict[str, Any] | None = None) ->
             except ApiError as exc:
                 formatter.print_error(exc)
                 passed = False
+            except (TypeError, ValueError, OverflowError) as exc:
+                name = getattr(test, "name", "<unnamed>")
+                formatter.print_error(
+                    ApiError(f"Test {name!r} has an invalid value: {exc}")
+                )
+                passed = False
             all_passed = all_passed and passed
     return all_passed
 
@@ -40,9 +46,22 @@ def run_test(client, test, context, formatter):
     expect = resolve_variables(test.expect or {}, context)
 
     if "expected_status" in expect:
+        try:
             expect["expected_status"] = int(expect["expected_status"])
+        except (TypeError, ValueError, OverflowError) as exc:
+            raise ApiError(
+                f"Invalid expected_status: {expect['expected_status']!r}"
+            ) from exc
     if "max_time" in expect:
+        try:
             expect["max_time"] = int(expect["max_time"])
+        except (TypeError, ValueError, OverflowError) as exc:
+            raise ApiError(f"Invalid max_time: {expect['max_time']!r}") from exc
+
+    try:
+        request_timeout = float(timeout)
+    except (TypeError, ValueError, OverflowError) as exc:
+        raise ApiError(f"Invalid timeout: {timeout!r}") from exc
 
     response = client.request(
         method=method,
@@ -50,7 +69,7 @@ def run_test(client, test, context, formatter):
         header=[f"{name}: {value}" for name, value in headers.items()],
         json=json_str,
         json_file=json_file,
-        timeout=float(timeout),
+        timeout=request_timeout,
     )
 
     formatter.print_response(response)

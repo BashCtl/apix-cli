@@ -1,0 +1,32 @@
+name: Booking
+tests:
+  - name: Create Token
+    method: post
+    url: ${{ BASE_URL }}/auth
+    json:
+      username: ${{ USERNAME }}
+      password: ${{ PASSWORD }}
+    expect:
+      expected_status: ${{ STATUS }}
+    extract:
+      token: token
+
+  - name: Create Booking
+    method: post
+    url: ${{ BASE_URL }}/booking
+    json_file: playground/booking.json
+    expect:
+      expected_status: ${{ STATUS }}
+    extract:
+      bookingid: bookingid
+
+  - name: Partial Update Booking
+    method: patch
+    url: ${{ BASE_URL }}/booking/${{ bookingid }}
+    headers:
+      Cookie: token=${{ token }}
+    json: 
+      lastname: Black
+    expect:
+      expected_status: ${{ STATUS }}
+    

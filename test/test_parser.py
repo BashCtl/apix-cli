@@ -106,6 +106,81 @@ def test_parse_data_to_test_suite_with_invalid_extract():
 
 
 @pytest.mark.parametrize(
+    ("field", "value", "message"),
+    [
+        ("expect", ["expected_status", 200], "'expect' must be a YAML mapping"),
+        ("headers", "Authorization: token", "'headers' must be a YAML mapping"),
+        ("timeout", "soon", "Invalid timeout value"),
+    ],
+)
+def test_parse_rejects_invalid_field_values(field, value, message):
+    test_case = {
+        "name": "Get user",
+        "method": "GET",
+        "url": "https://example.com",
+        field: value,
+    }
+
+    with pytest.raises(ApiError, match=message):
+        parse_test_suite({"name": "Users", "tests": [test_case]})
+
+
+@pytest.mark.parametrize(
+    ("field", "value", "message"),
+    [
+        ("name", "  ", "'name' must be a nonempty string"),
+        ("method", 42, "'method' must be a nonempty string"),
+        ("url", None, "'url' must be a nonempty string"),
+        ("headers", {"Authorization": 123}, "'headers' must contain"),
+        ("json", {1: "not a JSON object key"}, "'json' must contain"),
+        ("json_file", 42, "'json_file' must be a nonempty string"),
+        ("extract", {"token": "user..token"}, "'extract' must map"),
+        ("expect", {"unknown": True}, "Unsupported expect key"),
+        ("expect", {"expected_status": True}, "'expected_status' must be"),
+        ("expect", {"expected_status": 99}, "between 100 and 599"),
+        ("expect", {"max_time": -1}, "finite number >= 0"),
+        ("expect", {"expected_header": None}, "'expected_header' must be a string"),
+    ],
+)
+def test_parse_rejects_invalid_suite_field_values(field, value, message):
+    test_case = {
+        "name": "Get user",
+        "method": "GET",
+        "url": "https://example.com",
+        field: value,
+    }
+
+    with pytest.raises(ApiError, match=message):
+        parse_test_suite({"name": "Users", "tests": [test_case]})
+
+
+def test_parse_rejects_both_request_body_sources():
+    test_case = {
+        "name": "Create user",
+        "method": "POST",
+        "url": "https://example.com",
+        "json": {"name": "Ada"},
+        "json_file": "payload.json",
+    }
+
+    with pytest.raises(ApiError, match="only one of 'json' and 'json_file'"):
+        parse_test_suite({"name": "Users", "tests": [test_case]})
+
+
+@pytest.mark.parametrize("timeout", [0, -1, float("inf"), float("nan")])
+def test_parse_rejects_nonpositive_or_nonfinite_timeout(timeout):
+    test_case = {
+        "name": "Get user",
+        "method": "GET",
+        "url": "https://example.com",
+        "timeout": timeout,
+    }
+
+    with pytest.raises(ApiError, match="finite number greater than zero"):
+        parse_test_suite({"name": "Users", "tests": [test_case]})
+
+
+@pytest.mark.parametrize(
     "items, expected",
     [
         ([], {}),

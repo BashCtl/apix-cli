@@ -13,14 +13,17 @@ class ApiResponse:
     body: Any | None
     elapsed_ms: float
     size_bytes: int = 0
+    body_is_json: bool = False
 
     @classmethod
     def from_httpx(cls, response: httpx.Response) -> "ApiResponse":
+        body_is_json = False
         if not response.content:
             body = None
         else:
             try:
                 body = response.json()
+                body_is_json = True
             except ValueError:
                 body = response.text
 
@@ -32,6 +35,7 @@ class ApiResponse:
             body=body,
             elapsed_ms=response.elapsed.total_seconds() * 1000,
             size_bytes=len(response.content),
+            body_is_json=body_is_json,
         )
 
 

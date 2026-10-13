@@ -148,7 +148,15 @@ class TestJsonValueAssertion:
 
         assert result.passed is False
         assert result.actual == {"other": True}
-        assert result.message == "Expected response body to match JSON"
+        assert result.message == "JSON response differs at $.from"
+
+    def test_check_fail_reports_first_differing_json_path(self):
+        assertion = JsonValueAssertion({"user": {"id": 1}})
+
+        result = assertion.check(make_response(body={"user": {"id": 2}}))
+
+        assert result.passed is False
+        assert result.message == "JSON response differs at $.user.id"
 
     def test_empty_response_body_fails(self, fake_json_util):
         result = JsonValueAssertion('{"a": 1}').check(make_response(body=None))
@@ -213,19 +221,37 @@ class TestCheckAllAssertion:
         assert len(results) == 1
         assert results[0].passed is True
 
-    @pytest.mark.parametrize(
-        "kwargs",
-        [
-            {"expected_status": 0},
-            {"expected_status": None},
-            {"expected_header": ""},
-            {"max_time": 0},
-            {"expected_json": ""},
-        ],
-    )
-    def test_falsy_values_skip_the_assertion(self, kwargs):
-        # Current behaviour: truthiness is used, so 0 and "" disable the check.
-        assert check_all_assertions(make_response(), **kwargs) == []
+    def test_zero_status_is_still_checked(self):
+        results = check_all_assertions(make_response(), expected_status=0)
+
+        assert len(results) == 1
+        assert results[0].passed is False
+        assert results[0].expected == 0
+
+    def test_zero_max_time_is_still_checked(self):
+        results = check_all_assertions(make_response(elapsed_ms=1), max_time=0)
+
+        assert len(results) == 1
+        assert results[0].passed is False
+        assert results[0].expected == 0
+
+    def test_empty_header_expression_is_rejected(self):
+        with pytest.raises(ApiError, match="Invalid header assertion"):
+            check_all_assertions(make_response(), expected_header="")
+
+    def test_false_json_value_is_still_checked(self):
+        results = check_all_assertions(make_response(body=False), expected_json=False)
+
+        assert len(results) == 1
+        assert results[0].passed is True
+        assert results[0].expected is False
+
+    def test_empty_mapping_json_value_is_still_checked(self):
+        results = check_all_assertions(make_response(body={}), expected_json={})
+
+        assert len(results) == 1
+        assert results[0].passed is True
+        assert results[0].expected == {}
 
     def test_invalid_json_raises_api_error(self, fake_json_util):
         with pytest.raises(ApiError):

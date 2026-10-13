@@ -47,3 +47,16 @@ def test_load_invalid_filepath(tmp_path):
         load_yaml(tmp_path / "/data.yaml")
 
     assert "File not found" in str(excinfo.value)
+
+
+def test_load_yaml_directory_returns_api_error(tmp_path):
+    with pytest.raises(ApiError, match="Could not read YAML file"):
+        load_yaml(tmp_path)
+
+
+def test_load_yaml_invalid_utf8_returns_api_error(tmp_path):
+    yaml_file = tmp_path / "invalid.yaml"
+    yaml_file.write_bytes(b"name: \xff")
+
+    with pytest.raises(ApiError, match="Could not read YAML file"):
+        load_yaml(yaml_file)

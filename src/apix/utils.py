@@ -15,13 +15,13 @@ class JsonUtil:
     @staticmethod
     def load_json_file(filepath):
         try:
-            with open(filepath, "r") as file:
+            with open(filepath, "r", encoding="utf-8") as file:
                 return json.load(file)
         except FileNotFoundError:
             raise ApiError(f"File not found: {filepath}") from None
         except json.JSONDecodeError as exc:
             raise ApiError(f"Invalid JSON in {filepath}: {exc}") from exc
-        except OSError as exc:
+        except (OSError, UnicodeError) as exc:
             raise ApiError(f"Could not read {filepath}: {exc}") from exc
 
     @staticmethod

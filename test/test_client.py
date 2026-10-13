@@ -1,4 +1,5 @@
 import httpx
+import json
 import pytest
 from apix.models import ApiResponse
 from conftest import make_response
@@ -109,6 +110,25 @@ def test_put_200_returns_updated_resource(make_api):
     assert isinstance(result, ApiResponse)
     assert result.status_code == 200
     assert result.body == {"id": 42, "name": "Widget"}
+
+
+def test_json_text_is_sent_as_json_document(make_api):
+    seen = {}
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        seen["body"] = json.loads(request.content)
+        return make_response(200, json={"ok": True})
+
+    make_api(handler).request("POST", URL, json='{"name":"Ada"}')
+
+    assert seen["body"] == {"name": "Ada"}
+
+
+def test_invalid_json_text_raises_api_error(make_api):
+    api = make_api(ok)
+
+    with pytest.raises(ApiError, match="Invalid request JSON"):
+        api.request("POST", URL, json='{"name":')
 
 
 @pytest.mark.parametrize(

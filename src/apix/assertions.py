@@ -15,7 +15,7 @@ class AssertionResult:
     message: str
 
 
-def is_valid_filepath(filepath):
+def is_valid_filepath(filepath: str) -> bool:
     return Path(filepath).is_file()
 
 
@@ -84,10 +84,12 @@ class HeaderAssertion:
 
 
 class JsonValueAssertion:
-    def __init__(self, expected: str):
+    def __init__(self, expected: object):
         self.expected = self.load_expected(expected)
 
-    def load_expected(self, expected):
+    def load_expected(self, expected: object) -> object:
+        if not isinstance(expected, str):
+            return expected
         if is_valid_filepath(expected):
             return JsonUtil.load_json_file(expected)
         if JsonUtil.is_json(expected):
@@ -95,12 +97,57 @@ class JsonValueAssertion:
         raise ApiError(f"{expected} is invalid JSON")
 
     def check(self, response: ApiResponse) -> AssertionResult:
+        path = self._first_difference(self.expected, response.body)
+        passed = path is None
         return AssertionResult(
-            passed=response.body == self.expected,
+            passed=passed,
             expected=self.expected,
             actual=response.body,
-            message="Expected response body to match JSON",
+            message=(
+                "JSON response matches expected value"
+                if passed
+                else f"JSON response differs at {path}"
+            ),
         )
+
+    def _first_difference(
+        self, expected: object, actual: object, path: str = "$"
+    ) -> str | None:
+        both_numbers = (
+            isinstance(expected, (int, float))
+            and not isinstance(expected, bool)
+            and isinstance(actual, (int, float))
+            and not isinstance(actual, bool)
+        )
+        if type(expected) is not type(actual) and not both_numbers:
+            return path
+        if isinstance(expected, dict):
+            for key in expected:
+                child_path = (
+                    f"{path}.{key}"
+                    if isinstance(key, str)
+                    else f"{path}[{key!r}]"
+                )
+                if key not in actual:
+                    return child_path
+                difference = self._first_difference(expected[key], actual[key], child_path)
+                if difference is not None:
+                    return difference
+            for key in actual:
+                if key not in expected:
+                    return f"{path}.{key}" if isinstance(key, str) else f"{path}[{key!r}]"
+            return None
+        if isinstance(expected, list):
+            for index, (expected_item, actual_item) in enumerate(zip(expected, actual)):
+                difference = self._first_difference(
+                    expected_item, actual_item, f"{path}[{index}]"
+                )
+                if difference is not None:
+                    return difference
+            if len(expected) != len(actual):
+                return f"{path}[{min(len(expected), len(actual))}]"
+            return None
+        return None if expected == actual else path
 
 
 class ResponseTimeAssertion:
@@ -123,13 +170,13 @@ def check_all_assertions(response: ApiResponse, **kwargs) -> list[AssertionResul
     expected_header = kwargs.get("expected_header", None)
     max_time = kwargs.get("max_time", None)
     expected_json = kwargs.get("expected_json", None)
-    if expected_status:
+    if expected_status is not None:
         assertions.append(StatusAssertion(expected_status))
-    if expected_header:
+    if expected_header is not None:
         assertions.append(HeaderAssertion(expected_header))
-    if max_time:
+    if max_time is not None:
         assertions.append(ResponseTimeAssertion(max_time))
-    if expected_json:
+    if expected_json is not None:
         assertions.append(JsonValueAssertion(expected_json))
 
     return [assertion.check(response) for assertion in assertions]

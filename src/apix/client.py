@@ -48,7 +48,7 @@ class ApiClient:
             key, _, value = h.partition(":")
             headers[key.strip()] = value.strip()
 
-        if json or json_file:
+        if json is not None or json_file:
             headers.setdefault("Content-Type", "application/json")
 
         if json is not None and json_file is not None:
@@ -58,7 +58,10 @@ class ApiClient:
             json = JsonUtil.load_json_file(json_file)
 
         if isinstance(json, str):
-            json = JsonUtil.load_json_str(json)
+            try:
+                json = JsonUtil.load_json_str(json)
+            except ValueError as exc:
+                raise ApiError(f"Invalid request JSON: {exc}") from exc
 
         try:
             response: httpx.Response = self.client.request(

@@ -290,6 +290,19 @@ def test_expect_json_invalid(monkeypatch):
     assert "is invalid JSON" in str(error)
 
 
+def test_command_api_error_exits_nonzero(monkeypatch):
+    fake_client = make_fake_client(monkeypatch)
+    fake_client.request.side_effect = ApiError("request failed")
+    fake_formatter = MagicMock()
+    monkeypatch.setattr("apix.cli.Formatter", lambda: fake_formatter)
+
+    result = runner.invoke(app, ["command", "GET", "https://x.com"])
+
+    assert result.exit_code == 1
+    fake_formatter.print_error.assert_called_once()
+    assert str(fake_formatter.print_error.call_args.args[0]) == "request failed"
+
+
 def test_expect_json_ignores_key_order(monkeypatch):
     fake_response = make_fake_response(body={"user": "Dude", "id": 1})
 
@@ -484,16 +497,18 @@ def test_api_error_from_any_step_is_printed(mocks, stage):
     err = ApiError(f"{stage} failed")
     getattr(mocks, stage).side_effect = err
 
-    runner.invoke(app, ["run", "suite.yaml", "--env", ".env"])
+    result = runner.invoke(app, ["run", "suite.yaml", "--env", ".env"])
 
+    assert result.exit_code == 1, result.output
     mocks.formatter.print_error.assert_called_once_with(err)
 
 
 def test_api_error_while_loading_yaml_stops_everything_else(mocks):
     mocks.load_yaml.side_effect = ApiError("bad yaml")
 
-    runner.invoke(app, ["run", "suite.yaml", "--env", ".env"])
+    result = runner.invoke(app, ["run", "suite.yaml", "--env", ".env"])
 
+    assert result.exit_code == 1, result.output
     mocks.load_env.assert_not_called()
     mocks.resolve_variables.assert_not_called()
     mocks.parse_test_suite.assert_not_called()
