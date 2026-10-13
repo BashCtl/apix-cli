@@ -1,14 +1,13 @@
 import typer
 
+from apix.assertions import check_all_assertions
 from apix.client import ApiClient
+from apix.env_loader import load_env
 from apix.errors import ApiError
 from apix.formatter import Formatter
-from apix.assertions import check_all_assertions
-from apix.yaml_loader import load_yaml
-from apix.parser import parse_test_suite
+from apix.parser import parse_test_suite, parse_vars, resolve_variables
 from apix.runner import run_test_suite
-from apix.env_loader import load_env
-from apix.parser import  parse_vars
+from apix.yaml_loader import load_yaml
 
 app = typer.Typer()
 
@@ -69,6 +68,7 @@ def command(
             raise typer.Exit(1)
     except ApiError as e:
         formatter.print_error(e)
+        raise typer.Exit(1) from e
 
 
 @app.command()
@@ -119,6 +119,7 @@ def run(
             raise typer.Exit(1)
     except ApiError as exc:
         formatter.print_error(exc)
+        raise typer.Exit(1) from exc
 
 
 if __name__ == "__main__":

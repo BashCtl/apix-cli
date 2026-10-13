@@ -282,7 +282,7 @@ def test_expect_json_invalid(monkeypatch):
         ],
     )
 
-    assert result.exit_code == 0, result.output
+    assert result.exit_code == 1, result.output
 
     fake_formatter.print_error.assert_called_once()
 
@@ -373,7 +373,7 @@ def test_expect_json_invalid_file(monkeypatch, tmp_path):
         ],
     )
 
-    assert result.exit_code == 0, result.output
+    assert result.exit_code == 1, result.output
 
     fake_formatter.print_error.assert_called_once()
 

@@ -57,6 +57,9 @@ class ApiClient:
         if json_file:
             json = JsonUtil.load_json_file(json_file)
 
+        if isinstance(json, str):
+            json = JsonUtil.load_json_str(json)
+
         try:
             response: httpx.Response = self.client.request(
                 method=method, url=url, headers=headers, json=json, timeout=timeout
